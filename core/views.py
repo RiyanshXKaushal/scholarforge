@@ -2,6 +2,7 @@
 import streamlit as st
 
 from core import db
+from core.digest import configured as digest_on
 from core.llm import llm_available, secret
 from core.orchestrator import run_agent
 from core.profile import DEMO_PROFILE
@@ -33,8 +34,7 @@ def _sidebar_status():
     with st.sidebar:
         st.caption("Connections")
         st.write(("🟢" if llm_available() else "⚪") + " Gemini " + ("connected" if llm_available() else "not configured"))
-        st.write(("🟢" if secret("N8N_WEBHOOK_URL") else "⚪") + " Telegram digest " +
-                 ("on" if secret("N8N_WEBHOOK_URL") else "off"))
+        st.write(("🟢" if digest_on() else "⚪") + " Telegram digest " + ("on" if digest_on() else "off"))
         st.write(("🟢" if secret("GITHUB_TOKEN") else "⚪") + " GitHub token " +
                  ("set" if secret("GITHUB_TOKEN") else "not set (lower rate limit)"))
 
