@@ -1,0 +1,80 @@
+{
+  "name": "ScholarForge digest to Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scholarforge-digest",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "ffda3b35-d00c-4842-bb85-fcf11e073c64",
+      "name": "Digest webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "eaf7217e-5a5a-45e8-9c8f-b0387dcd0635"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst top = Array.isArray(body.top) ? body.top : [];\nconst fmtDate = (d) => {\n  if (!d) return 'no deadline';\n  const dt = new Date(d + 'T00:00:00');\n  return isNaN(dt) ? d : dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });\n};\nconst lines = [`🎓 ScholarForge digest for ${body.profile_name || 'you'}`, ''];\nif (top.length) {\n  lines.push('Top picks:');\n  top.forEach((t, i) => {\n    lines.push(`${i + 1}. ${t.title} — score ${t.score ?? '?'} — due ${fmtDate(t.deadline)}`);\n    if (t.url) lines.push(`   ${t.url}`);\n  });\n} else {\n  lines.push('Nothing new you can act on right now.');\n}\nif (body.flagged_scams) lines.push('', `⚠️ ${body.flagged_scams} likely scam${body.flagged_scams > 1 ? 's' : ''} blocked.`);\nlines.push('', `Run ${body.run_id || ''}`);\nreturn [{ json: { text: lines.join('\\n').slice(0, 4000) } }];\n"
+      },
+      "id": "15e5bc25-80b8-4eea-b5f7-6c85da4667f3",
+      "name": "Format message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "REPLACE_WITH_YOUR_CHAT_ID",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "ca1d92a5-14db-41d4-8123-65bcb9a45189",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        520,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Digest webhook": {
+      "main": [
+        [
+          {
+            "node": "Format message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format message": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
