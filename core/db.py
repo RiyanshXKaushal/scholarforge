@@ -120,7 +120,7 @@ def latest_run() -> dict | None:
 
 
 def run_steps(run_id: str) -> list[dict]:
-    return [dict(r) for r in _read("SELECT * FROM run_steps WHERE run_id = ? ORDER BY started_at, step", (run_id,))]
+    return [dict(r) for r in _read("SELECT * FROM run_steps WHERE run_id = ? ORDER BY rowid", (run_id,))]
 
 
 def run_items(run_id: str) -> list[dict]:
