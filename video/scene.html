@@ -1,0 +1,417 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #0b0b0c;
+    --ink: #f3eee7;
+    --muted: #8a847c;
+    --coral: #d97757;
+    --panel: #1f1e1d;
+    --bubble: #2d2c29;
+    --line: #34322f;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; background: var(--bg); overflow: hidden; }
+  body { font-family: 'Inter', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #stage { position: absolute; inset: 0; transform-origin: 50% 45%; }
+  .layer { position: absolute; inset: 0; opacity: 0; will-change: transform, opacity, filter; }
+
+  /* Cinematic headline type */
+  .display { font-family: 'Inter Display', 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.035em; line-height: 1.0; }
+  .w { display: inline-block; opacity: 0; white-space: pre; }
+  .coral { color: var(--coral); }
+  .label { font-family: 'JetBrains Mono', monospace; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+
+  /* Hook */
+  #hook .block { position: absolute; left: 90px; right: 90px; top: 560px; font-size: 140px; }
+  #hook .block div { margin-bottom: 14px; }
+
+  /* Chat panels (recreated from this real conversation) */
+  .panel { position: absolute; left: 70px; width: 940px; background: var(--panel); border: 1px solid var(--line);
+           border-radius: 36px; padding: 40px 44px 48px; box-shadow: 0 60px 120px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.02) inset; }
+  .phead { display: flex; align-items: center; gap: 16px; font-size: 28px; font-weight: 600; color: #ece6dd; padding-bottom: 28px;
+           border-bottom: 1px solid var(--line); margin-bottom: 34px; }
+  .phead .dot { width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f0a080, var(--coral) 60%, #a9512f); }
+  .phead .cap { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 400; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+  .user { margin-left: 120px; background: var(--bubble); border-radius: 28px; padding: 26px 32px; font-size: 31px; line-height: 1.38; color: #ece6dd; }
+  .chips { display: flex; flex-wrap: wrap; gap: 14px; margin: 34px 0 26px; }
+  .chip { font-family: 'JetBrains Mono', monospace; font-size: 22px; color: #cfc8bd; background: #2a2926; border: 1px solid #3a3834;
+          border-radius: 14px; padding: 10px 16px; opacity: 0; }
+  .chip b { color: #7fbf7f; font-weight: 500; }
+  .reply { font-family: 'Bitstream Charter', 'DejaVu Serif', serif; font-size: 36px; line-height: 1.42; color: #f1ece4; min-height: 160px; }
+  .caret { display: inline-block; width: 3px; height: 38px; background: var(--coral); vertical-align: -6px; margin-left: 4px; }
+  .overlay { position: absolute; left: 80px; right: 80px; font-size: 92px; }
+
+  /* Spreadsheet */
+  #sheetwin { position: absolute; left: 60px; width: 960px; top: 380px; height: 1000px; background: #fff; border-radius: 22px; overflow: hidden;
+              box-shadow: 0 60px 140px rgba(0,0,0,.7); }
+  #sheetwin .bar { height: 64px; background: #f3f3f3; border-bottom: 1px solid #ddd; display: flex; align-items: center; padding: 0 24px; gap: 10px;
+                   font-size: 22px; color: #333; font-weight: 600; }
+  #sheetwin .bar i { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
+  #sheetwin .bar span { margin-left: 14px; }
+  #sheetscroll { position: absolute; top: 64px; left: 0; right: 0; }
+  table { border-collapse: collapse; width: 100%; font-family: Arial, 'Liberation Sans', sans-serif; font-size: 21px; color: #111; }
+  th { background: #1f3864; color: #fff; font-weight: 700; padding: 16px 10px; text-align: center; border: 1px solid #c9c9c9; }
+  td { padding: 16px 10px; border: 1px solid #d4d4d4; text-align: left; }
+  td.n { text-align: center; color: #555; width: 44px; }
+  td.g { background: #e2efda; } td.y { background: #fff2cc; } td.r { background: #fce4ec; }
+  td.v { font-weight: 700; font-size: 18px; }
+  tr.hl td { box-shadow: inset 0 0 0 3px #d97757; }
+
+  /* Code editor */
+  #editor { position: absolute; left: 50px; width: 980px; top: 360px; height: 980px; background: #141413; border: 1px solid #2c2b28;
+            border-radius: 28px; overflow: hidden; box-shadow: 0 60px 140px rgba(0,0,0,.7); }
+  #editor .tabs { height: 66px; background: #1b1a19; border-bottom: 1px solid #2c2b28; display: flex; align-items: flex-end; padding-left: 20px; gap: 6px; }
+  #editor .tab { font-family: 'JetBrains Mono', monospace; font-size: 21px; color: #8a847c; padding: 14px 22px; border-radius: 12px 12px 0 0; }
+  #editor .tab.on { background: #141413; color: #ece6dd; }
+  #codewrap { position: absolute; top: 66px; bottom: 0; left: 0; right: 0; overflow: hidden; }
+  #code { position: absolute; left: 0; right: 0; top: 0; font-family: 'JetBrains Mono', monospace; font-size: 24px; line-height: 42px; padding: 26px 0; }
+  .ln { display: flex; white-space: pre; padding-right: 20px; }
+  .ln .no { width: 78px; text-align: right; padding-right: 26px; color: #4c4a46; flex: none; }
+  .ln.here { background: rgba(217,119,87,.16); box-shadow: inset 4px 0 0 var(--coral); }
+  .k { color: #e0876a; } .s { color: #a8c98a; } .c { color: #6f6a63; font-style: italic; } .num { color: #e6b866; } .f { color: #9cc3e6; }
+  #progress { position: absolute; left: 80px; right: 80px; top: 1390px; }
+  #progress .row { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 26px; color: #cfc8bd; margin-bottom: 16px; }
+  #progress .track { height: 10px; background: #2a2926; border-radius: 6px; overflow: hidden; }
+  #progress .fill { height: 100%; width: 0; background: linear-gradient(90deg, #a9512f, var(--coral), #f0a080); }
+
+  /* Reveal + end card */
+  #reveal .big { position: absolute; left: 80px; right: 80px; top: 700px; font-size: 156px; }
+  #reveal .sub { position: absolute; left: 84px; right: 80px; top: 1080px; font-size: 44px; color: #cfc8bd; font-weight: 500; letter-spacing: -0.01em; line-height: 1.3; }
+  #reveal .counter { position: absolute; left: 84px; top: 560px; }
+  #end .big { position: absolute; left: 0; right: 0; top: 800px; text-align: center; font-size: 112px; }
+  #end .sub { position: absolute; left: 0; right: 0; top: 960px; text-align: center; font-size: 40px; color: #cfc8bd; font-weight: 500; }
+  #end .fine { position: absolute; left: 0; right: 0; top: 1500px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 20px; color: #6f6a63; letter-spacing: .06em; }
+
+  /* Film finish */
+  #leak { position: absolute; inset: -200px; pointer-events: none; mix-blend-mode: screen; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 60% at 50% 45%, transparent 55%, rgba(0,0,0,.72) 100%); }
+  #grain { position: absolute; inset: 0; width: 1080px; height: 1920px; pointer-events: none; opacity: .09; mix-blend-mode: overlay; image-rendering: pixelated; }
+  #flash { position: absolute; inset: 0; background: #fff6ee; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <div class="layer" id="hook">
+    <div class="block display">
+      <div class="words">This video</div>
+      <div class="words">was made by</div>
+      <div class="words">an AI</div>
+      <div class="words coral">that can't</div>
+      <div class="words coral">make videos.</div>
+    </div>
+  </div>
+
+  <div class="layer" id="chat1">
+    <div class="label" style="position:absolute;left:84px;top:270px">Yesterday, I asked Claude</div>
+    <div class="panel" style="top:340px">
+      <div class="phead"><span class="dot"></span>Claude<span class="cap">recreated · real chat</span></div>
+      <div class="user">Go through this YouTube video, analyze it properly and make a spreadsheet of the ideas. Are they doable or not?</div>
+      <div class="chips">
+        <div class="chip"><b>✓</b> video_transcript · 13:39</div>
+        <div class="chip"><b>✓</b> web_search × 29</div>
+        <div class="chip"><b>✓</b> build_scan_workbook.py</div>
+      </div>
+      <div class="reply"><span class="typed" data-text="I went through all 13 minutes. 17 side hustles, checked against 4 hard gates. I disagree with the video on 9 of them."></span><span class="caret"></span></div>
+    </div>
+    <div class="overlay display" style="top:1390px"><div class="words">It watched the video.</div></div>
+  </div>
+
+  <div class="layer" id="sheet">
+    <div class="label" style="position:absolute;left:84px;top:300px">ai-side-hustles-decision-scan.xlsx</div>
+    <div id="sheetwin">
+      <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>17 Hustles Scored</span></div>
+      <div id="sheetscroll"><table id="tbl"></table></div>
+    </div>
+    <div class="overlay display" style="top:1440px"><div class="words">Then it did the research.</div></div>
+  </div>
+
+  <div class="layer" id="chat2">
+    <div class="label" style="position:absolute;left:84px;top:270px">Today, I asked for a video</div>
+    <div class="panel" style="top:340px">
+      <div class="phead"><span class="dot"></span>Claude<span class="cap">recreated · real chat</span></div>
+      <div class="user">Make a video showing how it is now possible to make videos with Claude. Make it cinematic.</div>
+      <div class="reply" style="margin-top:40px"><span class="typed" data-text="I can't generate video. But I can write the code that renders one, frame by frame."></span><span class="caret"></span></div>
+    </div>
+    <div class="overlay display" style="top:1240px"><div class="words">Problem:</div><div class="words coral">it can't make videos.</div></div>
+  </div>
+
+  <div class="layer" id="codescene">
+    <div class="label" style="position:absolute;left:84px;top:280px">So it wrote one</div>
+    <div id="editor">
+      <div class="tabs"><div class="tab on">scene.html</div><div class="tab">render.js</div></div>
+      <div id="codewrap"><div id="code"></div></div>
+    </div>
+    <div id="progress">
+      <div class="row"><span id="pframe">frame 0000 / 1080</span><span id="ptime">00.0s</span></div>
+      <div class="track"><div class="fill" id="pfill"></div></div>
+    </div>
+  </div>
+
+  <div class="layer" id="reveal">
+    <div class="counter label" id="rframe">frame 0000</div>
+    <div class="big display"><div class="words">You're</div><div class="words coral">watching it.</div></div>
+    <div class="sub"><div class="words">Every frame you just saw</div><div class="words">was rendered from code.</div></div>
+  </div>
+
+  <div class="layer" id="end">
+    <div class="big display"><span class="words">Made with Claude.</span></div>
+    <div class="sub"><span class="words">No editor. No timeline. Just a prompt.</span></div>
+    <div class="fine">CHAT PANELS RECREATED FROM A REAL CONVERSATION</div>
+  </div>
+
+  <canvas id="leak" width="148" height="232"></canvas>
+</div>
+<div id="vignette"></div>
+<canvas id="grain" width="540" height="960"></canvas>
+<div id="flash"></div>
+
+<script>
+const FPS = 30, TOTAL = 1080;
+
+// ---------- timing helpers ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const outCubic = x => 1 - Math.pow(1 - x, 3);
+const inOutCubic = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const outExpo = x => x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+// A scene's envelope: fade/scale in at a, out at b.
+function scene(el, t, a, b, inDur = .45, outDur = .35) {
+  const pin = outCubic(prog(t, a, a + inDur)), pout = prog(t, b - outDur, b);
+  const on = t >= a && t < b;
+  el.style.opacity = on ? pin * (1 - pout) : 0;
+  const drift = 1 + .035 * prog(t, a, b);                 // slow push-in
+  el.style.transform = `scale(${(drift + (1 - pin) * .06 + pout * .08).toFixed(4)})`;
+  el.style.filter = `blur(${((1 - pin) * 14 + pout * 18).toFixed(1)}px)`;
+  return on;
+}
+
+// Split .words lines into word spans once.
+$$('.words').forEach(line => {
+  line.innerHTML = line.textContent.split(/(\s+)/).map(w => w.trim() ? `<span class="w">${w}</span>` : w).join('');
+});
+
+// Blur-up word reveal.
+function words(root, t, t0, stagger = .09, dur = .55) {
+  $$('.w', root).forEach((w, i) => {
+    const p = outExpo(prog(t, t0 + i * stagger, t0 + i * stagger + dur));
+    w.style.opacity = p;
+    w.style.transform = `translateY(${((1 - p) * 46).toFixed(1)}px)`;
+    w.style.filter = `blur(${((1 - p) * 16).toFixed(1)}px)`;
+  });
+}
+
+function typeOut(el, t, t0, cps = 38) {
+  const full = el.dataset.text, n = Math.floor(clamp((t - t0) * cps, 0, full.length));
+  el.textContent = full.slice(0, n);
+  const caret = el.nextElementSibling;
+  caret.style.opacity = n < full.length ? 1 : (Math.floor(t * 2.4) % 2 ? 0 : 1);
+}
+
+function riseIn(el, t, t0, dist = 140) {
+  const p = outCubic(prog(t, t0, t0 + .7));
+  el.style.transform = `translateY(${((1 - p) * dist).toFixed(1)}px)`;
+  el.style.opacity = p;
+}
+
+// ---------- spreadsheet data (from the real workbook) ----------
+const ROWS = [
+  ['AI automation (narrowed)', 'g', 'g', 'g', 'g', 'YES'],
+  ['AI websites', 'g', 'g', 'y', 'g', 'YES · bundle'],
+  ['AI lead generation', 'g', 'y', 'y', 'y', 'CONDITIONAL'],
+  ['AI voice agents', 'g', 'r', 'g', 'y', 'LATER'],
+  ['AI digital products', 'g', 'r', 'y', 'y', 'NOT FIRST'],
+  ['AI ghostwriting', 'g', 'y', 'r', 'r', 'CONDITIONAL'],
+  ['AI clipping', 'g', 'g', 'y', 'y', 'POCKET MONEY'],
+  ['AI video editing', 'g', 'y', 'r', 'r', 'CONDITIONAL'],
+  ['AI chatbots', 'g', 'y', 'y', 'y', 'FOLD IN'],
+  ['AI UGC', 'g', 'y', 'r', 'r', 'CONDITIONAL'],
+  ['AI apps', 'g', 'r', 'g', 'r', 'NO'],
+  ['Faceless YouTube', 'g', 'r', 'y', 'r', 'NO'],
+  ['AI dropshipping', 'r', 'y', 'r', 'r', 'NO'],
+  ['AI prompts', 'g', 'r', 'r', 'r', 'NO'],
+  ['AI meme pages', 'g', 'r', 'r', 'r', 'NO'],
+  ['AI print on demand', 'g', 'r', 'r', 'r', 'NO'],
+  ['AI trading bots', 'r', 'r', 'r', 'r', 'NO'],
+];
+$('#tbl').innerHTML = '<tr><th>#</th><th>Side hustle</th><th>Risk</th><th>Speed</th><th>Edge</th><th>Fit</th><th>Verdict</th></tr>' +
+  ROWS.map((r, i) => `<tr${i === 0 ? ' class="hl"' : ''}><td class="n">${i + 1}</td><td>${r[0]}</td>` +
+    r.slice(1, 5).map(c => `<td class="${c}"></td>`).join('') + `<td class="v">${r[5]}</td></tr>`).join('');
+const trs = $$('#tbl tr');
+
+// ---------- the code shown on screen (excerpt of this very file + render.js) ----------
+const CODE = `// render.js — the "camera"
+for (let f = 0; f < TOTAL; f++) {
+  await page.evaluate(t => render(t), f / FPS);
+  const frame = await page.screenshot({ type: 'jpeg' });
+  await write(ffmpeg.stdin, frame);
+}
+
+// scene.html — the "film"
+function render(t) {
+  hook(t);      // 0.0s  "This video was made…"
+  chat1(t);     // 5.6s  the YouTube request
+  sheet(t);     // 11.6s the spreadsheet
+  chat2(t);     // 15.9s "make a video"
+  code(t);      // 21.9s you are here
+  reveal(t);    // 27.9s
+  endCard(t);   // 31.9s
+  grain(t);
+}
+
+function words(root, t, t0, stagger = .09) {
+  // blur-up reveal, one word at a time
+  w.style.filter = \`blur(\${(1 - p) * 16}px)\`;
+}`;
+function hl(line) {
+  const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const ci = esc.indexOf('//');
+  const code = ci >= 0 ? esc.slice(0, ci) : esc, cm = ci >= 0 ? esc.slice(ci) : '';
+  const body = code
+    .replace(/('[^']*'|"[^"]*"|`[^`]*`)/g, '<span class="s">$1</span>')
+    .replace(/\b(const|let|for|await|function|return)\b/g, '<span class="k">$1</span>')
+    .replace(/\b(\d+(\.\d+)?)\b/g, '<span class="num">$1</span>')
+    .replace(/\b(render|hook|chat1|sheet|chat2|code|reveal|endCard|grain|words|write|evaluate|screenshot)\(/g, '<span class="f">$1</span>(');
+  return body + (cm ? `<span class="c">${cm}</span>` : '');
+}
+const codeLines = CODE.split('\n');
+$('#code').innerHTML = codeLines.map((l, i) =>
+  `<div class="ln${l.includes('you are here') ? ' here' : ''}"><span class="no">${i + 1}</span><span>${hl(l) || ' '}</span></div>`).join('');
+
+// ---------- scenes ----------
+function hook(t) {
+  const el = $('#hook');
+  if (!scene(el, t, 0, 5.6, .01, .4)) return;
+  const lines = $$('.words', el);
+  words(lines[0], t, .5, .11);
+  words(lines[1], t, 1.0, .11);
+  words(lines[2], t, 1.6, .11);
+  words(lines[3], t, 2.7, .14, .7);
+  words(lines[4], t, 3.2, .14, .7);
+  // chromatic jitter on the coral lines as they land
+  const j = Math.max(0, 1 - prog(t, 3.2, 4.1)) * (t > 2.7 ? 1 : 0);
+  lines.slice(3).forEach(l => l.style.textShadow = j > 0 ? `${(6 * j).toFixed(1)}px 0 rgba(80,160,255,.55), ${(-6 * j).toFixed(1)}px 0 rgba(255,60,60,.5)` : 'none');
+}
+
+function chat1(t) {
+  const el = $('#chat1');
+  if (!scene(el, t, 5.6, 11.6)) return;
+  riseIn($('.panel', el), t, 5.75);
+  riseIn($('.user', el), t, 6.1, 40);
+  $$('.chip', el).forEach((c, i) => riseIn(c, t, 7.0 + i * .35, 24));
+  typeOut($('.typed', el), t, 8.1, 40);
+  words($('.overlay', el), t, 6.6, .1);
+}
+
+function sheet(t) {
+  const el = $('#sheet');
+  if (!scene(el, t, 11.6, 15.9)) return;
+  riseIn($('#sheetwin'), t, 11.7, 180);
+  trs.forEach((tr, i) => {                       // rows cascade in
+    const p = outCubic(prog(t, 12.0 + i * .06, 12.4 + i * .06));
+    tr.style.opacity = p; tr.style.transform = `translateX(${((1 - p) * 40).toFixed(1)}px)`;
+  });
+  const scroll = inOutCubic(prog(t, 13.0, 15.5)) * 230;
+  $('#sheetscroll').style.transform = `translateY(${-scroll}px)`;
+  words($('.overlay', el), t, 12.6, .1);
+}
+
+function chat2(t) {
+  const el = $('#chat2');
+  if (!scene(el, t, 15.9, 21.9)) return;
+  riseIn($('.panel', el), t, 16.0);
+  riseIn($('.user', el), t, 16.3, 40);
+  typeOut($('.typed', el), t, 17.2, 34);
+  const ov = $$('.overlay .words', el);
+  words(ov[0], t, 18.6, .1); words(ov[1], t, 19.0, .12, .7);
+}
+
+function code(t) {
+  const el = $('#codescene');
+  if (!scene(el, t, 21.9, 27.9, .45, .15)) return;
+  riseIn($('#editor'), t, 21.95, 160);
+  const s = inOutCubic(prog(t, 22.5, 26.5)) * 330;
+  $('#code').style.transform = `translateY(${-s}px)`;
+  const f = Math.round(t * FPS);
+  $('#pframe').textContent = `frame ${String(f).padStart(4, '0')} / ${TOTAL}`;
+  $('#ptime').textContent = `${t.toFixed(1).padStart(4, '0')}s`;
+  $('#pfill').style.width = `${(f / TOTAL * 100).toFixed(2)}%`;
+  riseIn($('#progress'), t, 22.4, 30);
+}
+
+function reveal(t) {
+  const el = $('#reveal');
+  if (!scene(el, t, 27.9, 31.9, .05, .35)) return;
+  const b = $$('.big .words', el), s = $$('.sub .words', el);
+  words(b[0], t, 28.05, .1, .5); words(b[1], t, 28.35, .12, .6);
+  words(s[0], t, 29.4, .06); words(s[1], t, 29.9, .06);
+  $('#rframe').textContent = `frame ${String(Math.round(t * FPS)).padStart(4, '0')} — this one`;
+  $('#rframe').style.opacity = prog(t, 28.2, 28.7);
+}
+
+function endCard(t) {
+  const el = $('#end');
+  if (!scene(el, t, 31.9, 36.01, .5, .9)) return;
+  words($('.big', el), t, 32.1, .12, .7);
+  words($('.sub', el), t, 32.9, .05);
+  $('.fine', el).style.opacity = prog(t, 33.4, 34.0);
+}
+
+// Light leak: a warm blob that drifts, brighter on scene changes.
+const leak = $('#leak'), lctx = leak.getContext('2d');
+function lightLeak(t) {
+  lctx.clearRect(0, 0, 148, 232);
+  const cuts = [5.6, 11.6, 15.9, 17.9, 19.9, 21.9, 23.9, 25.9, 27.9, 31.9];   // scene cuts + music hits
+  const kick = Math.max(...cuts.map(c => Math.exp(-Math.pow((t - c) / .25, 2))));
+  const x = 74 + 60 * Math.sin(t * .35), y = 60 + 40 * Math.cos(t * .27);
+  const g = lctx.createRadialGradient(x, y, 0, x, y, 120);
+  g.addColorStop(0, `rgba(217,119,87,${(.22 + .5 * kick).toFixed(3)})`);
+  g.addColorStop(1, 'rgba(217,119,87,0)');
+  lctx.fillStyle = g; lctx.fillRect(0, 0, 148, 232);
+  leak.style.filter = 'blur(40px)';
+}
+
+// Film grain: seeded noise so every render is identical.
+const gctx = $('#grain').getContext('2d'), gimg = gctx.createImageData(540, 960);
+function grain(t) {
+  let seed = (Math.round(t * FPS) * 9301 + 49297) % 233280;
+  const d = gimg.data;
+  for (let i = 0; i < d.length; i += 4) {
+    seed = (seed * 9301 + 49297) % 233280;
+    const v = (seed / 233280) * 255;
+    d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+  }
+  gctx.putImageData(gimg, 0, 0);
+}
+
+function flash(t) {
+  // white hit on the music drop, small pops on cuts
+  const hit = Math.exp(-Math.max(0, t - 27.9) * 7) * (t >= 27.9 ? 1 : 0);
+  $('#flash').style.opacity = hit.toFixed(3);
+  const shake = t >= 27.9 && t < 28.3 ? (1 - prog(t, 27.9, 28.3)) * 10 : 0;
+  $('#stage').style.transform = `translate(${(Math.sin(t * 90) * shake).toFixed(1)}px, ${(Math.cos(t * 77) * shake).toFixed(1)}px)`;
+}
+
+function render(t) {
+  hook(t);
+  chat1(t);
+  sheet(t);
+  chat2(t);
+  code(t);
+  reveal(t);
+  endCard(t);
+  lightLeak(t);
+  flash(t);
+  grain(t);
+}
+window.render = render;
+render(0);
+</script>
+</body>
+</html>
